@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DFW Coffee Passport ☕</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--bg:#f7f3ed;--card:#fffaf3;--ink:#2c241f;--muted:#786d65;--accent:#8b5e3c;--line:#e5dbd0}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:20px 24px 15px;background:var(--card);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:end;gap:15px}h1{margin:0 0 4px;font-size:27px}.sub{color:var(--muted);font-size:13px}.count{font-size:13px;color:var(--muted);white-space:nowrap}
+.wrap{display:grid;grid-template-columns:390px 1fr;height:calc(100vh - 82px)}aside{overflow:auto;padding:12px;background:#fbf8f3;border-right:1px solid var(--line)}#map{height:100%}
+.shop{background:white;border:1px solid #e8dfd6;border-radius:13px;padding:12px;margin:0 0 9px;cursor:pointer;transition:.15s}.shop:hover{border-color:#b9977b;box-shadow:0 3px 12px #0000000d}.shop.active{border-color:var(--accent);box-shadow:0 0 0 2px #8b5e3c22}.top{display:flex;align-items:center}.num{display:inline-flex;min-width:26px;width:26px;height:26px;border-radius:50%;background:var(--accent);color:white;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-right:9px}.name{font-weight:750}.badge{margin-left:auto;font-size:11px;color:var(--muted);background:#f1e8df;border-radius:999px;padding:4px 7px}.locs{margin:8px 0 0 35px}.loc{font-size:12px;color:#665c55;padding:5px 0;border-top:1px solid #f0e9e2}.actions{margin:8px 0 0 35px;display:flex;gap:7px}.btn{font-size:11px;padding:6px 9px;border-radius:8px;text-decoration:none;background:#f1e8df;color:#5c402d}
+#status{font-size:12px;color:var(--muted);padding:7px}.leaflet-popup-content{font-size:13px}.popup-title{font-weight:750;font-size:15px;margin-bottom:4px}.popup-link{display:inline-block;margin-top:7px;color:#7a4f31}
+@media(max-width:800px){.wrap{grid-template-columns:1fr;height:auto}aside{max-height:48vh;order:2}#map{height:52vh;order:1}}
+</style></head><body>
+<header><div><h1>☕ DFW Coffee Passport</h1><div class="sub">Click a shop on the left — every location for that coffee brand will light up on the map.</div></div><div class="count" id="count"></div></header>
+<div class="wrap"><aside id="list"><div id="status">Loading locations…</div></aside><div id="map"></div></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const groups=[
+{name:'Acacia Collective',locs:[['8601c Liberty Grove Rd, Rowlett, TX 75089',32.9029,-96.5639]]},
+{name:'Arlington Coffee Roasters',locs:[['400 E Division St #105, Arlington, TX 76011',32.7355,-97.1080]]},
+{name:'Armor Coffee',locs:[['190 E Stacy Rd #408, Allen, TX 75002',33.1280,-96.6570],['3040 FM 544 Ste 100, Wylie, TX 75098',33.0170,-96.5550]]},
+{name:'Beeso Coffee',locs:[['337 Coneflower Dr, Garland, TX 75040',32.9970,-96.6760],['1804 K Ave, Plano, TX 75074',33.0250,-96.7100]]},
+{name:'BEKINDER Coffee',locs:[['6500 Greenville Ave Ste 170, Dallas, TX 75206',32.8640,-96.7690]]},
+{name:"Bird's Bookstore",locs:[['6025 Royal Ln Ste 207, Dallas, TX 75230',32.9220,-96.8030]]},
+{name:'Café OLIVIA',passport:'Addison location',locs:[['14551 Dallas Pkwy Ste 100, Dallas, TX 75254',32.9450,-96.8210],['2200 Ross Ave Ste 100, Dallas, TX 75201',32.7880,-96.7990]]},
+{name:'Huitzitzilin Café',locs:[['1836 W Jefferson Blvd #120, Dallas, TX 75208',32.7440,-96.8290]]},
+{name:'Inspired Brew',locs:[['19009 Preston Rd Ste 209B, Dallas, TX 75252',32.9990,-96.8040]]},
+{name:'Magnolias: Sous Le Pont',locs:[['2727 N Harwood St, Dallas, TX 75201',32.7945,-96.8030]]},
+{name:'The Meteor',locs:[['1970 Hi Line Dr, Dallas, TX 75207',32.8000,-96.8150]]},
+{name:'Pull Through Coffee Bar',locs:[['4875 W Lawther Dr, Dallas, TX 75214',32.8250,-96.7300]]},
+{name:'Remote Coffee',locs:[['10999 Garland Rd, Dallas, TX 75218',32.8530,-96.6960]]},
+{name:"Ruthie's Cafe",locs:[['1632 Martin Luther King Jr Blvd Ste 100, Dallas, TX 75215',32.7670,-96.7740]]},
+{name:'Stow and Steady',locs:[['Stow and Steady Coffee, Dallas, TX',32.7750,-96.7950]]},
+{name:'Sugar & Sage Bakery',locs:[['4314 Lovers Ln, Dallas, TX 75225',32.8480,-96.8070]]},
+{name:'White Rhino Coffee',locs:[
+['8150 N Central Expy Ste 101, Dallas, TX 75206',32.8500,-96.7690],
+['2700 Commerce St, Dallas, TX 75226',32.7830,-96.7810],
+['2909 Thomas Ave, Dallas, TX 75204',32.7990,-96.7980],
+['1401 Elm St Ste 100, Dallas, TX 75202',32.7815,-96.8005],
+['5080 Spectrum Dr Ste 100E, Addison, TX 75001',32.9510,-96.8200],
+['1607 Fort Worth Ave, Dallas, TX 75208',32.7550,-96.8370],
+['8075 FM 423 Unit 100, Frisco, TX 75034',33.1510,-96.8670],
+['414 W Main St, Waxahachie, TX 75165',32.3940,-96.8490],
+['230 W Belt Line Rd, Cedar Hill, TX 75104',32.5880,-96.9560],
+['8955 Cypress Waters Blvd #102, Dallas, TX 75063',32.9290,-96.9640],
+['401 E Border St, Arlington, TX 76010',32.7350,-97.1070]
+]},
+{name:'White Rock Coffee',locs:[
+['6312 La Vista Dr, Dallas, TX 75214',32.8230,-96.7410],
+['10105 E NW Hwy, Dallas, TX 75238',32.8670,-96.6980],
+['4216 Abrams Rd, Dallas, TX 75214',32.8160,-96.7500],
+['5930 Royal Ln, Dallas, TX 75230',32.9230,-96.7990],
+['8333 Douglas Ave Ste 150, Dallas, TX 75225',32.8630,-96.8070],
+['6715 Hillcrest Ave, University Park, TX 75205',32.8500,-96.7900],
+['2101 Cedar Springs Rd Ste 130, Dallas, TX 75201',32.7970,-96.8050]
+]}
+];
+const map=L.map('map').setView([32.88,-96.78],10);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors'}).addTo(map);
+const list=document.getElementById('list'),count=document.getElementById('count'),markersByGroup=[];let allMarkers=[];
+function mapsUrl(q){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q)}
+function makeMarker(g,i,lat,lon){const m=L.circleMarker([lat,lon],{radius:7,weight:3,opacity:1,fillOpacity:.85}).addTo(map);m.bindPopup(`<div class="popup-title">${g.name}</div><div>${g.locs[i]}</div><a class="popup-link" target="_blank" href="${mapsUrl(g.locs[i])}">Open in Google Maps →</a>`);return m}
+function reset(){allMarkers.forEach(m=>m.setStyle({radius:7,weight:3,opacity:.35,fillOpacity:.25}));document.querySelectorAll('.shop').forEach(x=>x.classList.remove('active'))}
+function activate(gi){reset();const ms=markersByGroup[gi]||[];ms.forEach(m=>m.setStyle({radius:12,weight:4,opacity:1,fillOpacity:1}));const el=document.querySelector(`[data-gi="${gi}"]`);if(el)el.classList.add('active');if(ms.length){const b=L.featureGroup(ms);map.fitBounds(b.getBounds().pad(.35));ms[0].openPopup()}}
+function activate(gi){reset();const ms=markersByGroup[gi]||[];ms.forEach(m=>m.setStyle({radius:12,weight:4,opacity:1,fillOpacity:1}));const el=document.querySelector(`[data-gi="${gi}"]`);if(el)el.classList.add('active');if(ms.length){const b=L.featureGroup(ms);map.fitBounds(b.getBounds().pad(.35));ms[0].openPopup()}}
+function load(){let total=0;groups.forEach(g=>total+=g.locs.length);count.textContent=`${groups.length} passport shops • ${total} locations`;list.innerHTML='';for(let gi=0;gi<groups.length;gi++){const g=groups[gi],card=document.createElement('div');card.className='shop';card.dataset.gi=gi;card.innerHTML=`<div class="top"><span class="num">${gi+1}</span><span class="name">${g.name}</span><span class="badge">${g.locs.length} location${g.locs.length>1?'s':''}</span></div><div class="locs"></div><div class="actions"><a class="btn" target="_blank" href="${mapsUrl(g.name+' Dallas TX')}">Google Maps</a></div>`;card.onclick=e=>{if(e.target.tagName==='A')return;activate(gi)};list.appendChild(card);markersByGroup[gi]=[];const locBox=card.querySelector('.locs');for(let i=0;i<g.locs.length;i++){const [addr,lat,lon]=g.locs[i];locBox.insertAdjacentHTML('beforeend',`<div class="loc">${addr}</div>`);const m=makeMarker(g,i,lat,lon);markersByGroup[gi].push(m);allMarkers.push(m)}}if(allMarkers.length){allMarkers.forEach(m=>m.setStyle({opacity:.8,fillOpacity:.65}));map.fitBounds(L.featureGroup(allMarkers).getBounds().pad(.08));}document.getElementById('status')?.remove();}
+load();
+</script></body></html>
